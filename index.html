@@ -1500,9 +1500,35 @@ async function exportJPG(){
 }
 
 /* ============================================================
+   HOST LOCK — only run when served from the official site.
+   Embedding still works: an <iframe> loads this file FROM the
+   allowed host, so the iframe's own origin is what is checked.
+   Note: a client-side check is a deterrent, not real security —
+   anyone with the file can edit or remove it.
+   ============================================================ */
+const ALLOWED_HOST = 'trbaker.github.io';
+function originAllowed(){
+  try { return location.protocol === 'https:' && location.hostname === ALLOWED_HOST; }
+  catch(e){ return false; }
+}
+function renderBlocked(){
+  document.body.className='';
+  document.body.style.background='#eceee7';
+  app.innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center;">
+      <div style="max-width:440px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 28px;box-shadow:var(--shadow);">
+        ${MARK}
+        <h1 style="font-family:var(--display);font-size:22px;margin:14px 0 8px;color:var(--ink);">This Scaffold isn't available here</h1>
+        <p style="color:var(--ink-soft);font-size:15px;line-height:1.55;margin:0;">This app only runs on its official site. Open it at <a href="https://${ALLOWED_HOST}" style="color:var(--pine);font-weight:600;text-decoration:none;">${ALLOWED_HOST}</a>.</p>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
    BOOT
    ============================================================ */
 (function init(){
+  if(!originAllowed()){ renderBlocked(); return; }
   const view=getParam('view');
   const c=getParam('c');
   if(view==='student' && c){
