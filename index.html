@@ -156,6 +156,13 @@
   .embed code{display:block;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:#243; padding:15px 16px;white-space:pre-wrap;word-break:break-all;background:#fbfcf9;}
   .embed .note{padding:12px 16px;border-top:1px solid var(--line-soft);color:var(--ink-soft);font-size:13px;}
   .embed .note b{color:var(--ink);font-weight:600;}
+  .share-row{padding:14px 16px;border-bottom:1px solid var(--line-soft);}
+  .share-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+  .share-label .rec{font-family:var(--body);letter-spacing:0;text-transform:none;font-size:11px;font-weight:600;color:#fff;background:var(--pine);border-radius:999px;padding:2px 9px;}
+  .share-row code{display:block;font-family:var(--mono);font-size:12px;line-height:1.6;color:#243;padding:11px 12px;white-space:pre-wrap;word-break:break-all;background:#fbfcf9;border:1px solid var(--line-soft);border-radius:9px;}
+  .share-row .copy{margin-top:9px;}
+  .share-hint{margin:9px 0 0;color:var(--ink-soft);font-size:12.5px;line-height:1.5;}
+  .share-hint b{color:var(--ink);font-weight:600;}
 
   /* ---------- student worktable ---------- */
   body.is-student{background:#e7e9e2;}
@@ -320,6 +327,19 @@
   .exporting [contenteditable][data-ph]:empty::before{content:"";}
 
   footer.app{border-top:1px solid var(--line);color:var(--ink-soft);font-size:12.5px;padding:18px 0;}
+
+  /* Export dialog (used inside embeds where auto-download is blocked) */
+  .export-modal{position:fixed;inset:0;background:rgba(22,32,43,.55);display:grid;place-items:center;padding:18px;z-index:9999;}
+  .export-card{background:#fff;border-radius:14px;max-width:420px;width:100%;box-shadow:0 24px 70px -24px rgba(0,0,0,.55);overflow:hidden;}
+  .export-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line-soft);font-weight:600;color:var(--ink);}
+  .export-x{border:none;background:transparent;font-size:22px;line-height:1;color:var(--ink-soft);width:30px;height:30px;border-radius:6px;cursor:pointer;}
+  .export-x:hover{background:rgba(0,0,0,.07);}
+  .export-preview{padding:14px 16px;background:#f4f5f0;display:grid;place-items:center;}
+  .export-preview img{max-width:100%;max-height:46vh;border:1px solid var(--line);border-radius:8px;background:#fff;}
+  .export-actions{display:flex;gap:14px;align-items:center;padding:14px 16px;flex-wrap:wrap;}
+  .export-dl{text-decoration:none;}
+  .export-open{color:var(--pine);font-weight:600;text-decoration:none;font-size:14px;}
+  .export-tip{margin:0;padding:0 16px 16px;color:var(--ink-soft);font-size:12.5px;}
 
   @media (max-width:640px){
     .kwl{grid-template-columns:1fr;}
@@ -605,19 +625,35 @@ function generateEmbed(){
   const snippet = `<iframe src="${src}"\n  title="${title}"\n  width="100%" height="640"\n  style="border:1px solid #d7dbd0;border-radius:12px;max-width:980px;"\n  loading="lazy"></iframe>`;
   const out=document.getElementById('embedOut');
   out.innerHTML = `
-    <div class="embed-top">
-      <h3>Embed code</h3>
-      <button class="copy" id="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+    <div class="embed-top"><h3>Share with students</h3></div>
+
+    <div class="share-row">
+      <div class="share-label">1 · Direct link <span class="rec">recommended</span></div>
+      <code id="linkCode"></code>
+      <button class="copy" data-copy="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy link</button>
+      <p class="share-hint">Opens the activity in its own browser tab, where <b>Export JPG downloads work</b>. Best for ArcGIS StoryMaps and any site that blocks in-frame downloads — paste it as a link/button, or add it in a StoryMaps <b>Embed</b> block and have students use the embed's <b>“open in new tab”</b> button (top-right) before exporting.</p>
     </div>
-    <code id="snippet"></code>
-    <div class="note"><b>How to use it:</b> host this <code style="display:inline;padding:0;background:none">scaffold.html</code> file on your site or learning platform, then paste this snippet into a page that allows embed/HTML blocks. ${location.protocol.startsWith('http')?'':'The address below is a placeholder — replace it with wherever you host the file.'} Each student sees a fresh copy and can export their own work.</div>`;
+
+    <div class="share-row">
+      <div class="share-label">2 · Inline embed code</div>
+      <code id="snippet"></code>
+      <button class="copy" data-copy="iframe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy code</button>
+      <p class="share-hint">Embeds the activity directly in the page. Students can work inside it, but <b>downloads only work if the host doesn’t sandbox the iframe.</b> ArcGIS StoryMaps blocks in-frame downloads, so use the direct link above for exporting there.</p>
+    </div>
+
+    <div class="note">${location.protocol.startsWith('http')?'':'<b>Heads up:</b> the address shown is a placeholder — replace it with wherever you host the file. '}Each student gets a fresh copy of the activity.</div>`;
+  document.getElementById('linkCode').textContent=src;
   document.getElementById('snippet').textContent=snippet;
   out.classList.add('show');
-  document.getElementById('copyBtn').addEventListener('click',function(){
-    const btn=this;
-    navigator.clipboard.writeText(snippet).then(()=>{
-      btn.innerHTML='✓ Copied'; setTimeout(()=>btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy',1600);
-    }).catch(()=>{ btn.textContent='Copy failed — select manually'; });
+  const copyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  out.querySelectorAll('[data-copy]').forEach(btn=>{
+    const label = btn.dataset.copy==='link'?'Copy link':'Copy code';
+    btn.addEventListener('click',()=>{
+      const text = btn.dataset.copy==='link'?src:snippet;
+      navigator.clipboard.writeText(text).then(()=>{
+        btn.innerHTML='✓ Copied'; setTimeout(()=>btn.innerHTML=copyIcon+label,1600);
+      }).catch(()=>{ btn.textContent='Copy failed — select manually'; });
+    });
   });
   out.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -1470,6 +1506,40 @@ function frayerClear(){
 }
 
 /* ---------- export ---------- */
+const inIframe = (()=>{ try{ return window.self !== window.top; }catch(e){ return true; } })();
+
+function triggerDownload(href, filename){
+  const a=document.createElement('a');
+  a.href=href; a.download=filename; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function showExportResult(href, filename){
+  document.querySelectorAll('.export-modal').forEach(m=>m.remove());
+  const isBlob = typeof href==='string' && href.indexOf('blob:')===0;
+  const ov=document.createElement('div'); ov.className='export-modal';
+  ov.innerHTML=`
+    <div class="export-card">
+      <div class="export-head"><span>Your image is ready</span><button class="export-x" aria-label="Close">×</button></div>
+      <div class="export-preview"><img alt="Preview of your work"></div>
+      <div class="export-actions">
+        <a class="btn pine export-dl">Download JPG</a>
+        <a class="export-open" target="_blank" rel="noopener">Open in new tab</a>
+      </div>
+      <p class="export-tip"><b>Didn't download?</b> Press and hold the image (phone) or right-click it (computer) and choose <b>Save image</b>.</p>
+    </div>`;
+  ov.querySelector('img').src=href;
+  const dl=ov.querySelector('.export-dl'); dl.href=href; dl.setAttribute('download',filename);
+  ov.querySelector('.export-open').href=href;
+  document.body.appendChild(ov);
+  const close=()=>{ ov.remove(); if(isBlob) setTimeout(()=>URL.revokeObjectURL(href),20000); };
+  ov.querySelector('.export-x').addEventListener('click',close);
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  // Best-effort: if the embed DOES allow downloads, start it without a second tap.
+  // If the host sandbox blocks it, the visible image + buttons remain as the fallback.
+  try{ dl.click(); }catch(_){}
+}
+
 async function exportJPG(){
   const target = document.getElementById('captureTarget') || document.getElementById('vennCanvas') || document.getElementById('cmapCanvas') || document.getElementById('flowCanvas');
   if(!target) return;
@@ -1483,19 +1553,34 @@ async function exportJPG(){
   document.body.classList.add('exporting');
   if(tpl==='causeeffect') ceDraw();
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
+  let out=null;
   try{
-    const canvas=await html2canvas(target,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false});
-    const data=canvas.toDataURL('image/jpeg',0.95);
-    const a=document.createElement('a');
-    const base=(state.config.title||TEMPLATES[state.config.template].name).replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'organizer';
-    a.href=data; a.download=base+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
-  }catch(err){
-    alert('Sorry — the image could not be created. Try again.');
-    console.error(err);
-  }finally{
+    out=await html2canvas(target,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false});
+  }catch(err){ console.error(err); }
+  finally{
     document.body.classList.remove('exporting');
     if(state.selected && state.selected.classList) state.selected.classList.add('selected');
     btn.innerHTML=prev;
+  }
+  if(!out){ alert('Sorry — the image could not be created. Try again.'); return; }
+
+  const filename=((state.config.title||TEMPLATES[tpl].name).replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'organizer')+'.jpg';
+
+  // Prefer a Blob URL (more reliable for downloads than a large data: URL).
+  let blob=null;
+  try{ blob=await new Promise(res=>out.toBlob(res,'image/jpeg',0.95)); }catch(_){}
+
+  if(blob){
+    const url=URL.createObjectURL(blob);
+    // Inside an embed, a programmatic click after async work is blocked silently,
+    // so surface a dialog whose Download button is a fresh user gesture.
+    if(inIframe){ showExportResult(url, filename); }
+    else { triggerDownload(url, filename); setTimeout(()=>URL.revokeObjectURL(url),15000); }
+  } else {
+    const data=out.toDataURL('image/jpeg',0.95);
+    if(inIframe){ showExportResult(data, filename); }
+    else { triggerDownload(data, filename); }
   }
 }
 
